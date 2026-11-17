@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 export const instant = false;
 import ProjectHero from "@/components/ProjectHero";
+import ProjectBannerTitle from "@/components/ProjectBannerTitle";
 import SectionHeading from "@/components/SectionHeading";
 import Reveal from "@/components/Reveal";
 import CTABand from "@/components/CTABand";
@@ -53,7 +54,12 @@ export default async function KaithalPage() {
         crumb="Bhagat Singh Colony Ext."
         image={image}
         alt={name}
-        title={<>Bhagat Singh Colony Extension — <span className="text-gold">Secure &amp; Well-Connected Living</span></>}
+        title={
+          <ProjectBannerTitle
+            heading={project?.bannerheading}
+            fallback={<>Bhagat Singh Colony Extension — <span className="text-gold">Secure &amp; Well-Connected Living</span></>}
+          />
+        }
         sub="Kaithal ke prime location par modern amenities, boundary wall aur lighting gate ke saath residential plots — turant ghar banane aur long-term investment dono ke liye."
         ctas={
           <>

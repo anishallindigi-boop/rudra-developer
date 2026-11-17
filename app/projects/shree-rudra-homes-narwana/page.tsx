@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 
 export const instant = false;
 import ProjectHero from "@/components/ProjectHero";
+import ProjectBannerTitle from "@/components/ProjectBannerTitle";
 import SectionHeading from "@/components/SectionHeading";
 import Reveal from "@/components/Reveal";
 import CTABand from "@/components/CTABand";
@@ -69,7 +70,12 @@ export default async function NarwanaPage() {
         crumb="Shree Rudra Homes"
         image={image}
         alt={name}
-        title={<>Shree Rudra Homes — Premium Residential Plots in <span className="text-gold">Sector 15, Narwana</span></>}
+        title={
+          <ProjectBannerTitle
+            heading={project?.bannerheading}
+            fallback={<>Shree Rudra Homes — Premium Residential Plots in <span className="text-gold">Sector 15, Narwana</span></>}
+          />
+        }
         sub="Apne sapno ka ghar banayein ek secure, government-approved aur well-planned residential township mein — DDJAY policy ke antargat, HRERA-registered."
         ctas={
           <>
@@ -100,7 +106,7 @@ export default async function NarwanaPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid items-center gap-14 lg:grid-cols-2">
             <Reveal>
-              <SectionHeading align="left" eyebrow="Project Overview" title="Modern Township, Narwana ke Dil Mein" />
+              <SectionHeading align="left" eyebrow="Project Overview" title={project?.aboutheading || "Modern Township, Narwana ke Dil Mein"} />
               <p className="mt-6 leading-relaxed text-slate-700">{overview}</p>
               <p className="mt-4 leading-relaxed text-slate-700">Har plot registry aur possession ke saath aata hai, aur pura township HRERA se registered hai ({reraNo}). Aap invest kar rahe ho ek fully-developed, legally-safe property mein.</p>
             </Reveal>
@@ -230,7 +236,7 @@ export default async function NarwanaPage() {
         <section className="bg-alabaster py-20 md:py-28">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <Reveal>
-              <SectionHeading align="left" eyebrow={project?.aboutheading || "About"} title={project?.aboutsubheading || "Project Details"} />
+              <SectionHeading align="left" eyebrow="About the Project" title={project?.aboutheading || "About the Project"} sub={project?.aboutsubheading} />
             </Reveal>
             <div className="mt-8 grid gap-6 lg:grid-cols-2">
               {project?.aboutpara1 && <Reveal><p className="leading-relaxed text-slate-700">{project.aboutpara1}</p></Reveal>}

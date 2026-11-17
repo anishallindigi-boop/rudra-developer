@@ -20,7 +20,7 @@ export async function adminFetch(path: string, options: RequestInit = {}) {
     ...(options.headers as Record<string, string> || {}),
   };
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const res = await fetch(`${API_BASE}${path}`, { cache: "no-store", ...options, headers });
   if (res.status === 401) {
     clearToken();
     if (typeof window !== "undefined") window.location.assign(window.location.origin + "/admin/login");
