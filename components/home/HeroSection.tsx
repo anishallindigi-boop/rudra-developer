@@ -1,6 +1,6 @@
-import Link from "next/link";
 import ImageSlot from "@/components/ImageSlot";
 import Reveal from "@/components/Reveal";
+import HeroCtas from "@/components/HeroCtas";
 import { ShieldCheck, ArrowRight } from "@/components/icons";
 import { waLink } from "@/lib/site";
 
@@ -48,22 +48,20 @@ export default function HeroSection() {
           </p>
         </Reveal>
         <Reveal delay={300}>
-          <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-            <Link
-              href="/projects"
-              className="group flex items-center justify-center gap-2 rounded-full bg-brand px-8 py-4 text-sm font-bold text-white shadow-xl shadow-brand/30 transition-all hover:-translate-y-0.5 hover:bg-brand-dark"
-            >
-              Explore Projects
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Link>
-            <a
-              href={waLink("Hello Shree Rudra Developers! Mujhe sales team se baat karni hai.")}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 rounded-full border border-white/30 px-8 py-4 text-sm font-bold text-white backdrop-blur transition-all hover:-translate-y-0.5 hover:border-gold hover:text-gold"
-            >
-              Contact Sales Team
-            </a>
+          <div className="mt-9">
+            <HeroCtas
+              primary={{
+                label: "Explore Projects",
+                href: "/projects",
+                icon: (
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                ),
+              }}
+              secondary={{
+                label: "Contact Sales Team",
+                href: waLink("Hello Shree Rudra Developers! Mujhe sales team se baat karni hai."),
+              }}
+            />
           </div>
         </Reveal>
       </div>

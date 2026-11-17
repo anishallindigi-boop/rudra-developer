@@ -4,12 +4,14 @@ export default function SectionHeading({
   sub,
   align = "center",
   light = false,
+  as: Tag = "h2",
 }: {
   eyebrow: string;
   title: string;
   sub?: string;
   align?: "center" | "left";
   light?: boolean;
+  as?: "h1" | "h2";
 }) {
   const centered = align === "center";
   return (
@@ -23,9 +25,9 @@ export default function SectionHeading({
         {eyebrow}
         {centered && <span className="h-px w-8 bg-gold" aria-hidden="true" />}
       </p>
-      <h2 className={`mt-4 text-3xl font-extrabold tracking-tight md:text-4xl ${light ? "text-white" : "text-charcoal"}`}>
+      <Tag className={`mt-4 text-3xl font-extrabold tracking-tight md:text-4xl ${light ? "text-white" : "text-charcoal"}`}>
         {title}
-      </h2>
+      </Tag>
       {sub && <p className={`mt-4 text-base leading-relaxed ${light ? "text-slate-300" : "text-slate-500"}`}>{sub}</p>}
     </div>
   );

@@ -3,12 +3,8 @@ import ImageSlot from "@/components/ImageSlot";
 import SectionHeading from "@/components/SectionHeading";
 import Reveal from "@/components/Reveal";
 import { MapPin, ArrowRight } from "@/components/icons";
+import { projectImage } from "@/lib/projectMedia";
 import type { Project } from "@/lib/api";
-
-const FALLBACK_IMAGES: Record<string, string> = {
-  "shree-rudra-homes-narwana": "/images/narwana-card.jpg",
-  "bhagat-singh-colony-extension-kaithal": "/images/kaithal-card.jpg",
-};
 
 export default function ProjectsSection({ projects }: { projects: Project[] }) {
   return (
@@ -31,7 +27,7 @@ export default function ProjectsSection({ projects }: { projects: Project[] }) {
               >
                 <div className="relative">
                   <ImageSlot
-                    src={project.image || FALLBACK_IMAGES[project.slug] || "/images/narwana-card.jpg"}
+                    src={projectImage(project)}
                     alt={project.name || "Project"}
                     label={project.name || "Project"}
                     className="aspect-[16/10]"

@@ -4,6 +4,8 @@ import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
 import { RootState } from "@/lib/redux/store";
 import { deleteImage } from "@/lib/redux/slice/ImageSlice";
 import ImageUploadModal from "@/components/admin/ImageUploadModal";
+import ImageCard from "@/components/admin/ImageCard";
+import { AdminPageHeader } from "@/components/admin/AdminUI";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -34,13 +36,15 @@ export default function AdminImages() {
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 900, color: "#111111" }}>Images</h1>
-        <Button className="cursor-pointer" onClick={() => setOpen(true)}>
-          <Upload className="w-4 h-4" />
-          Upload Image
-        </Button>
-      </div>
+      <AdminPageHeader
+        title="Images"
+        action={
+          <Button className="cursor-pointer" onClick={() => setOpen(true)}>
+            <Upload className="w-4 h-4" />
+            Upload Image
+          </Button>
+        }
+      />
 
       <div style={{ background: "#fff", borderRadius: 14, padding: 20, marginBottom: 24, boxShadow: "0 4px 14px rgba(0,0,0,.05)" }}>
         <h2 style={{ fontSize: 16, fontWeight: 800, marginBottom: 16 }}>Upload Image</h2>
@@ -50,16 +54,16 @@ export default function AdminImages() {
       </div>
 
       {loading && <div style={{ color: "#64748b" }}>Loading...</div>}
+
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 16 }}>
         {images.map((img) => (
-          <div key={img.filename} style={{ background: "#fff", borderRadius: 14, padding: 10, boxShadow: "0 4px 14px rgba(0,0,0,.05)" }}>
-            <img src={`${apiBase}${img.url}`} alt={img.alt} style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 8 }} />
-            <div style={{ fontSize: 11, color: "#64748b", marginTop: 8, wordBreak: "break-all" }}>{img.filename}</div>
-            <div style={{ fontSize: 11, color: "#94a3b8" }}>{img.folder} · {Math.round((img.bytes || img.size || 0) / 1024)} KB</div>
-            <button onClick={() => handleDelete(img.filename)} style={{ marginTop: 8, width: "100%", padding: "8px", borderRadius: 8, background: "#fee2e2", color: "#b91c1c", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>
-              Delete
-            </button>
-          </div>
+          <ImageCard
+            key={img.filename}
+            src={`${apiBase}${img.url}`}
+            filename={img.filename}
+            meta={`${img.folder} · ${Math.round((img.bytes || img.size || 0) / 1024)} KB`}
+            onDelete={() => handleDelete(img.filename)}
+          />
         ))}
         {images.length === 0 && (
           <div style={{ color: "#94a3b8", gridColumn: "1/-1", textAlign: "center", padding: 24 }}>
