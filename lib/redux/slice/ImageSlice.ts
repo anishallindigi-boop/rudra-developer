@@ -70,8 +70,6 @@ export const ImageSlice = createSlice({
   initialState,
   reducers: {
     resetImageState: (state) => {
-      state.images = [];
-      state.loading = false;
       state.message = null;
       state.error = null;
     },
@@ -95,7 +93,8 @@ export const ImageSlice = createSlice({
       })
       .addCase(uploadImages.fulfilled, (s, a) => {
         s.loading = false;
-        s.images = a.payload;
+        const added = a.payload.filter((p) => !s.images.some((i) => i.filename === p.filename));
+        s.images = [...added, ...s.images];
         s.message = "Image uploaded successfully";
         s.error = null;
       })
