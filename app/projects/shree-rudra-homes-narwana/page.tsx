@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 
 export const instant = false;
 import ProjectHero from "@/components/ProjectHero";
@@ -44,7 +44,7 @@ export default async function NarwanaPage() {
   const badge = project?.badge || "HRERA Approved | Deen Dayal Jan Awas Yojana (DDJAY)";
   const overview = project?.overview || project?.description ||
     "Sector 15, Narwana (District Jind) mein lagbhag 12 acres mein faila Shree Rudra Homes ek modern residential plotted township hai.";
-  const image = project?.image || "/images/narwana-hero.jpg";
+  const image = project?.image || "/images/narwana-card.jpg";
   const area = project?.area || "~11.99 Acres";
   const totalUnits = project?.totalUnits || "206 Residential Plots";
   const plotSizes = project?.plotSizes || "118 – 180 Sq. Yds.";
@@ -120,7 +120,7 @@ export default async function NarwanaPage() {
 
       <ProjectLocationAdvantages
         items={locationAdvantages}
-        image="/images/narwana-location.jpg"
+        image="/images/narwana-overview.jpg"
         imageLabel="Location Image / Map"
       />
 
@@ -143,7 +143,7 @@ export default async function NarwanaPage() {
       <ProjectBrochure
         title={project?.brochuretitle}
         paragraph={project?.brochurepara}
-        image={project?.brochureimage || "/images/narwana-master-plan.jpg"}
+        image={project?.brochureimage || "/images/narwana-overview.jpg"}
         pdf={project?.brochurepdf}
       />
 
@@ -171,7 +171,7 @@ export default async function NarwanaPage() {
         />
         <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
           <ImageSlot
-            src="/images/narwana-master-plan.jpg"
+            src="/images/narwana-overview.jpg"
             alt="Master plan"
             label="Master Plan Image"
             className="aspect-[4/3]"

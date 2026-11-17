@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 
 export const instant = false;
 import ProjectHero from "@/components/ProjectHero";
@@ -40,7 +40,7 @@ export default async function KaithalPage() {
   const location = project?.location || "Near HUDA Sector 19, Kaithal";
   const overview = project?.overview || project?.description ||
     "Bhagat Singh Colony Extension un parivaron ke liye design kiya gaya hai jo Kaithal mein ek peaceful, secure aur easily accessible residential area ki talash mein hain.";
-  const image = project?.image || "/images/kaithal-hero.jpg";
+  const image = project?.image || "/images/kaithal-card.jpg";
   const amenities = project?.amenities?.length
     ? project.amenities
     : ["Secure Boundary Wall", "Grand Lighting Gate", "Street Lighting", "Well-Planned Layout", "Prime Neighborhood", "Safe Investment"];
@@ -115,7 +115,7 @@ export default async function KaithalPage() {
           </Reveal>
           <Reveal delay={150} className="mt-12">
             <ZoomSlot
-              src="/images/kaithal-master-map.jpg"
+              src="/images/kaithal-card.jpg"
               alt="Master map"
               label="FINAL MAP – Bhagat Singh Colony Extension"
             />

@@ -2,17 +2,20 @@ import Link from "next/link";
 import ImageSlot from "@/components/ImageSlot";
 import TagList from "./TagList";
 import { ArrowRight } from "@/components/icons";
+import { imageSrc } from "@/lib/imageUrl";
 import type { Blog } from "@/lib/api";
 
 /** Blog post card for the /blog listing grid. */
 export default function BlogCard({ blog }: { blog: Blog }) {
+  const cover = imageSrc(blog.coverImage || "/images/narwana-card.jpg");
+
   return (
     <Link
       href={`/blog/${blog.slug}`}
       className="group block overflow-hidden rounded-3xl bg-white shadow-md shadow-slate-200/60 transition-all hover:-translate-y-1.5 hover:shadow-2xl"
     >
       <ImageSlot
-        src={blog.coverImage || "/images/about.jpg"}
+        src={cover}
         alt={blog.title}
         label={blog.title}
         className="aspect-[16/10]"
