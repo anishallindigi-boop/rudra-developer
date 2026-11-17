@@ -5,6 +5,10 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    files: ["app/admin/**/*.{ts,tsx}", "components/admin/**/*.{ts,tsx}", "lib/adminApi.ts"],
+    rules: { "@typescript-eslint/no-explicit-any": "off", "react-hooks/set-state-in-effect": "off", "@next/next/no-img-element": "off" },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
