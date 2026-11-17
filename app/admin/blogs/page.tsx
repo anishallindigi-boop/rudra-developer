@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { adminApi } from "@/lib/adminApi";
 import BlogForm, { type BlogFormValues } from "@/components/admin/BlogForm";
 import {
@@ -21,6 +22,17 @@ const toList = (value: unknown) =>
     ? value
     : String(value || "").split(",").map((s) => s.trim()).filter(Boolean);
 
+const slugify = (value: string) =>
+  String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+/** Mongo ObjectId check — empty strings / random text must not be sent to the API. */
+const isObjectId = (value: unknown) =>
+  typeof value === "string" && /^[a-f\d]{24}$/i.test(value);
+
 export default function AdminBlogs() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,7 +43,7 @@ export default function AdminBlogs() {
   async function load() {
     setLoading(true);
     try { setItems(await adminApi.getBlogs()); }
-    catch (e: any) { alert(e.message); }
+    catch (e: any) { toast.error(e?.message || "Blogs load nahi ho paaye"); }
     finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
@@ -46,8 +58,10 @@ export default function AdminBlogs() {
     setForm({
       ...EMPTY,
       ...b,
-      tags: (b.tags || []).join(", "),
-      category: (b.category || []).join(", "),
+      coverImage: b.coverImage || b.images || "",
+      tags: toList(b.tags).join(", "),
+      category: toList(b.category).join(", "),
+      published: b.published ?? b.status !== "draft",
     });
     setEditing(b);
     setShowForm(true);
@@ -64,26 +78,40 @@ export default function AdminBlogs() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    const title = form.title.trim();
     const payload: any = {
-      ...form,
+      title,
+      slug: form.slug.trim() || slugify(title),
+      excerpt: form.excerpt,
+      content: form.content,
+      coverImage: form.coverImage,
+      images: form.images,
+      metatitle: form.metatitle,
+      metadescription: form.metadescription,
+      metakeywords: form.metakeywords,
       tags: toList(form.tags),
-      category: toList(form.category),
+      category: toList(form.category).filter(isObjectId),
+      published: form.published,
+      status: form.published ? "active" : "draft",
     };
-    if (!payload.images) delete payload.images;
+    // author is an ObjectId ref — sending "" makes Mongoose cast fail.
+    if (isObjectId(form.author)) payload.author = form.author;
+
     try {
       if (editing) await adminApi.updateBlog(editing.slug, payload);
       else await adminApi.createBlog(payload);
+      toast.success(editing ? "Blog updated" : "Blog published");
       close();
       load();
     } catch (err: any) {
-      alert(err.message);
+      toast.error(err?.message || "Blog save nahi ho paaya");
     }
   }
 
   async function handleDelete(slug: string) {
     if (!confirm("Delete this blog?")) return;
-    try { await adminApi.deleteBlog(slug); load(); }
-    catch (err: any) { alert(err.message); }
+    try { await adminApi.deleteBlog(slug); toast.success("Blog deleted"); load(); }
+    catch (err: any) { toast.error(err?.message || "Delete failed"); }
   }
 
   const columns: AdminColumn<any>[] = [

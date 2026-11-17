@@ -1,32 +1,72 @@
-'use client';
+﻿"use client";
 
-import React from 'react';
-import { useEffect, useState, useCallback } from 'react';
-import { useAppDispatch, useAppSelector } from '@/lib/redux/hooks';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { DragEvent } from "react";
+import { toast } from "sonner";
 import {
-  uploadImages,
-  getImages,
-  deleteImage,
-  resetImageState,
-} from '@/lib/redux/slice/ImageSlice';
-import { RootState } from '@/lib/redux/store';
-import { Upload, Trash2, ImageIcon, Check, Loader2, X } from 'lucide-react';
-import { toast } from 'sonner';
+  AlertCircle,
+  Check,
+  Copy,
+  Eye,
+  ImageIcon,
+  ImagePlus,
+  Loader2,
+  RefreshCw,
+  Search,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 
+import { useAppDispatch, useAppSelector } from "@/lib/redux/hooks";
+import {
+  deleteImage,
+  getImages,
+  uploadImages,
+  type ImageItem,
+} from "@/lib/redux/slice/ImageSlice";
+import { RootState } from "@/lib/redux/store";
+import { imageSrc } from "@/lib/imageUrl";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import ConfirmDialog from "./ConfirmDialog";
+
+const MAX_MB = 10;
+const MAX_BYTES = MAX_MB * 1024 * 1024;
+
+type QueueStatus = "pending" | "uploading" | "error";
+type QueueItem = { id: string; file: File; status: QueueStatus };
 
 interface Props {
   open: boolean;
   onSelect: (urls: string[]) => void;
   onClose: () => void;
   multiple?: boolean;
+  /** false = pure library mode: clicking an image opens the preview instead of selecting it. */
+  selectable?: boolean;
+}
+
+function formatSize(bytes = 0) {
+  if (!bytes) return "0 KB";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function errMessage(err: unknown, fallback: string) {
+  if (typeof err === "string" && err.trim()) return err;
+  if (err && typeof err === "object" && "message" in err) {
+    const message = (err as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  return fallback;
 }
 
 export default function ImageUploadModal({
@@ -34,381 +74,578 @@ export default function ImageUploadModal({
   onSelect,
   onClose,
   multiple = true,
+  selectable = true,
 }: Props) {
   const dispatch = useAppDispatch();
-  const { images, loading, message, error } = useAppSelector(
-    (state: RootState) => state.image
-  );
+  const { images } = useAppSelector((state: RootState) => state.image);
 
+  const [fetching, setFetching] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
-  const [uploading, setUploading] = useState(false);
+  const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [query, setQuery] = useState("");
   const [dragActive, setDragActive] = useState(false);
-  const [uploadQueue, setUploadQueue] = useState<File[]>([]);
-  const [deleteConfirm, setDeleteConfirm] = useState<{
-    open: boolean;
-    filename: string | null;
-    url: string | null;
-  }>({ open: false, filename: null, url: null });
+  const [preview, setPreview] = useState<ImageItem | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<ImageItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-  /* Fetch images */
-  useEffect(() => {
-    if (open) {
-      dispatch(getImages());
-      setSelected([]);
-      setUploadQueue([]);
-    }
-  }, [open, dispatch]);
+  const uploading = queue.some((item) => item.status === "uploading");
 
-  /* Toasts */
-  useEffect(() => {
-    if (message) {
-      toast.success(message);
-      dispatch(resetImageState());
-    }
-    if (error) {
-      toast.error(error);
-      dispatch(resetImageState());
-    }
-  }, [message, error, dispatch]);
-
-  /* Handle drag events */
-  const handleDrag = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
-  }, []);
-
-  /* Handle drop */
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-
-    const droppedFiles = Array.from(e.dataTransfer.files).filter((file) =>
-      file.type.startsWith('image/')
-    );
-
-    if (droppedFiles.length === 0) {
-      toast.error('Please drop image files only');
-      return;
-    }
-
-    // Add to queue - useEffect will trigger upload
-    setUploadQueue((prev) => [...prev, ...droppedFiles]);
-    toast.success(`${droppedFiles.length} image(s) added to upload queue`);
-  }, []);
-
-  /* Handle file input change */
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || []).filter((file) =>
-      file.type.startsWith('image/')
-    );
-
-    if (selectedFiles.length > 0) {
-      setUploadQueue((prev) => [...prev, ...selectedFiles]);
-    }
-
-    // Reset input
-    e.target.value = '';
-  };
-
-  /* Upload files */
-  const handleUploadFiles = useCallback(async (files: File[]) => {
-    if (files.length === 0) return;
-
-    setUploading(true);
-
+  const fetchImages = useCallback(async () => {
+    setFetching(true);
     try {
-      const fd = new FormData();
-      files.forEach((file) => fd.append('images', file));
-
-      await dispatch(uploadImages(fd)).unwrap();
-
-      // Remove uploaded files from queue
-      setUploadQueue((prev) => prev.filter((f) => !files.includes(f)));
+      await dispatch(getImages()).unwrap();
     } catch (err) {
-      console.error('Upload failed:', err);
-      toast.error('Upload failed. Please try again.');
+      toast.error(errMessage(err, "Images load nahi ho paayi"));
     } finally {
-      setUploading(false);
+      setFetching(false);
     }
   }, [dispatch]);
 
-  /* Auto-upload when files are added to queue */
+  /* Reset + refresh every time the modal opens */
   useEffect(() => {
-    if (uploadQueue.length > 0 && !uploading) {
-      handleUploadFiles(uploadQueue);
-    }
-  }, [uploadQueue, uploading, handleUploadFiles]);
+    if (!open) return;
+    setSelected([]);
+    setQueue([]);
+    setQuery("");
+    setPreview(null);
+    setPendingDelete(null);
+    setDragActive(false);
+    void fetchImages();
+  }, [open, fetchImages]);
 
-  /* Remove from queue */
-  const removeFromQueue = (index: number) => {
-    setUploadQueue((prev) => prev.filter((_, i) => i !== index));
-  };
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return images;
+    return images.filter((img) =>
+      [img.originalName, img.filename, img.folder]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(q)),
+    );
+  }, [images, query]);
 
-  /* Select / deselect */
-  const toggleSelect = (url: string) => {
-    if (multiple) {
-      setSelected((prev) =>
-        prev.includes(url)
-          ? prev.filter((u) => u !== url)
-          : [...prev, url]
+  const allSelected =
+    filtered.length > 0 && filtered.every((img) => selected.includes(img.url));
+
+  const runUpload = useCallback(
+    async (items: QueueItem[]) => {
+      if (items.length === 0) return;
+      const ids = new Set(items.map((item) => item.id));
+
+      setQueue((prev) =>
+        prev.map((item) => (ids.has(item.id) ? { ...item, status: "uploading" } : item)),
       );
-    } else {
-      onSelect([url]);
-      onClose();
-    }
-  };
 
-  /* Confirm selection */
-  const confirmSelection = () => {
-    if (!selected.length) return toast.error('Select at least one image');
+      const fd = new FormData();
+      items.forEach((item) => fd.append("images", item.file));
+
+      try {
+        await dispatch(uploadImages(fd)).unwrap();
+        setQueue((prev) => prev.filter((item) => !ids.has(item.id)));
+        toast.success(`${items.length} image${items.length > 1 ? "s" : ""} uploaded`);
+      } catch (err) {
+        setQueue((prev) =>
+          prev.map((item) => (ids.has(item.id) ? { ...item, status: "error" } : item)),
+        );
+        toast.error(errMessage(err, "Upload failed — dobara try karein"));
+      }
+    },
+    [dispatch],
+  );
+
+  const addFiles = useCallback(
+    (fileList: FileList | File[]) => {
+      const files = Array.from(fileList);
+      const accepted: QueueItem[] = [];
+      let rejectedType = 0;
+      let rejectedSize = 0;
+
+      for (const file of files) {
+        if (!file.type.startsWith("image/")) {
+          rejectedType += 1;
+          continue;
+        }
+        if (file.size > MAX_BYTES) {
+          rejectedSize += 1;
+          continue;
+        }
+        accepted.push({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+          file,
+          status: "pending",
+        });
+      }
+
+      if (rejectedType > 0) {
+        toast.error(`${rejectedType} file(s) skip — sirf image files allowed hain`);
+      }
+      if (rejectedSize > 0) {
+        toast.error(`${rejectedSize} file(s) skip — max ${MAX_MB}MB per image`);
+      }
+      if (accepted.length === 0) return;
+
+      setQueue((prev) => [...prev, ...accepted]);
+      void runUpload(accepted);
+    },
+    [runUpload],
+  );
+
+  function onDrop(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(false);
+    if (event.dataTransfer.files?.length) addFiles(event.dataTransfer.files);
+  }
+
+  function toggleSelect(url: string) {
+    setSelected((prev) => {
+      if (prev.includes(url)) return prev.filter((item) => item !== url);
+      return multiple ? [...prev, url] : [url];
+    });
+  }
+
+  function handleImageClick(img: ImageItem) {
+    if (!selectable) {
+      setPreview(img);
+      return;
+    }
+    if (multiple) {
+      toggleSelect(img.url);
+      return;
+    }
+    onSelect([img.url]);
+    onClose();
+  }
+
+  function confirmSelection() {
+    if (selected.length === 0) {
+      toast.error("Pehle kam se kam ek image select karein");
+      return;
+    }
     onSelect(selected);
     setSelected([]);
     onClose();
-  };
+  }
 
-  /* Delete confirmed */
-  const handleDelete = async (filename: string) => {
-    try {
-      await dispatch(deleteImage(filename)).unwrap();
-      const imageToDelete = images.find((img) => img.filename === filename);
-      if (imageToDelete && selected.includes(imageToDelete.url)) {
-        setSelected((selected) => selected.filter((url) => url !== imageToDelete.url));
-      }
-    } catch (err) {
-      console.error('Delete failed:', err);
-    } finally {
-      setDeleteConfirm({ open: false, filename: null, url: null });
+  function pickFromPreview(img: ImageItem) {
+    if (multiple) {
+      toggleSelect(img.url);
+      setPreview(null);
+      return;
     }
-  };
+    onSelect([img.url]);
+    setPreview(null);
+    onClose();
+  }
 
-  /* Format file size */
-  const formatSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+  async function copyUrl(img: ImageItem) {
+    try {
+      await navigator.clipboard.writeText(imageSrc(img.url));
+      toast.success("Image URL copied");
+    } catch {
+      toast.error("Copy nahi ho paaya");
+    }
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      await dispatch(deleteImage(pendingDelete.filename)).unwrap();
+      setSelected((prev) => prev.filter((url) => url !== pendingDelete.url));
+      setPendingDelete(null);
+      toast.success("Image deleted");
+    } catch (err) {
+      toast.error(errMessage(err, "Delete failed"));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  function handleClose() {
+    setSelected([]);
+    setQueue([]);
+    setQuery("");
+    setPreview(null);
+    setPendingDelete(null);
+    onClose();
+  }
+
+  const hasImages = images.length > 0;
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="!max-w-[960px] w-full max-h-[90vh] overflow-hidden">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ImageIcon className="w-5 h-5" />
-              Image Library
-            </DialogTitle>
+      <Dialog open={open} onOpenChange={(value) => !value && handleClose()}>
+        <DialogContent className="flex max-h-[92vh] w-[calc(100vw-2rem)] max-w-5xl flex-col gap-0 overflow-hidden rounded-2xl border-slate-200 p-0">
+          {/* Header */}
+          <DialogHeader className="flex flex-row items-center gap-3 border-b border-slate-100 px-5 py-4 pr-14 text-left sm:px-6">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-tint text-brand">
+              <ImageIcon className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <DialogTitle className="text-base font-extrabold tracking-tight text-charcoal">
+                Image Library
+              </DialogTitle>
+              <DialogDescription className="mt-0.5 text-xs text-slate-500">
+                {selectable
+                  ? "Image select karein ya nayi upload karein"
+                  : "Upload karein, URL copy karein ya delete karein"}
+              </DialogDescription>
+            </div>
+            <span className="ml-auto hidden shrink-0 rounded-full bg-alabaster px-3 py-1 text-[11px] font-bold text-slate-500 sm:inline">
+              {images.length} image{images.length === 1 ? "" : "s"}
+            </span>
           </DialogHeader>
 
-          {/* Drag & Drop Zone */}
-          <div
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-            className={`
-              relative border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer
-              ${dragActive
-                ? 'border-primary bg-primary/10 scale-[1.02]'
-                : 'border-gray-300 hover:border-gray-400 bg-gray-50/50'
-              }
-              ${uploading ? 'pointer-events-none opacity-60' : ''}
-            `}
-          >
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleFileSelect}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              disabled={uploading}
-            />
-
-            <div className="pointer-events-none">
-              <div className={`
-                w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center transition-colors
-                ${dragActive ? 'bg-primary text-white' : 'bg-gray-200 text-gray-500'}
-              `}>
+          {/* Body */}
+          <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4 sm:px-6">
+            {/* Drop zone */}
+            <label
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setDragActive(true);
+              }}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setDragActive(true);
+              }}
+              onDragLeave={(event) => {
+                event.preventDefault();
+                setDragActive(false);
+              }}
+              onDrop={onDrop}
+              className={cn(
+                "relative flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed text-center transition-all",
+                hasImages
+                  ? "px-4 py-5 sm:flex-row sm:justify-start sm:gap-4 sm:text-left"
+                  : "px-6 py-12",
+                dragActive
+                  ? "border-brand bg-rose-tint"
+                  : "border-slate-200 bg-alabaster hover:border-brand/40 hover:bg-rose-tint/50",
+              )}
+            >
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={(event) => {
+                  if (event.target.files?.length) addFiles(event.target.files);
+                  event.target.value = "";
+                }}
+                className="sr-only"
+              />
+              <span
+                className={cn(
+                  "flex shrink-0 items-center justify-center rounded-full transition-colors",
+                  hasImages ? "h-10 w-10" : "h-14 w-14",
+                  dragActive ? "bg-brand text-white" : "bg-white text-brand shadow-sm",
+                )}
+              >
                 {uploading ? (
-                  <Loader2 className="w-8 h-8 animate-spin" />
+                  <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
-                  <Upload className="w-8 h-8" />
+                  <Upload className={hasImages ? "h-5 w-5" : "h-6 w-6"} />
                 )}
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-charcoal">
+                  {dragActive
+                    ? "Drop to upload"
+                    : hasImages
+                      ? "Upload more images"
+                      : "Drag & drop images here"}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {hasImages
+                    ? "Drop karein ya click karke browse karein"
+                    : "Ya click karke apne computer se choose karein"}
+                </p>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  JPG, PNG, WebP, GIF · max {MAX_MB}MB each
+                  {selectable && multiple ? " · multiple allowed" : ""}
+                </p>
               </div>
+              <span className="mt-1 inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-xs font-bold text-white shadow-sm sm:ml-auto">
+                <ImagePlus className="h-3.5 w-3.5" />
+                Choose files
+              </span>
+            </label>
 
-              <p className="text-lg font-medium text-gray-700 mb-1">
-                {uploading ? 'Uploading...' : 'Drop images here'}
-              </p>
-              <p className="text-sm text-gray-500">
-                {uploading
-                  ? 'Please wait while we upload your images'
-                  : 'or click to browse from your computer'
-                }
-              </p>
-              <p className="text-xs text-gray-400 mt-2">
-                Supports: JPG, PNG, GIF, WebP (Max 10MB each)
-              </p>
-            </div>
-          </div>
-
-          {/* Upload Queue */}
-          {uploadQueue.length > 0 && (
-            <div className="bg-blue-50 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-medium text-blue-900">
-                  Upload Queue ({uploadQueue.length})
-                </h4>
-                {uploading && (
-                  <span className="text-sm text-blue-600 flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Uploading...
-                  </span>
-                )}
-              </div>
-              <div className="space-y-2 max-h-32 overflow-y-auto">
-                {uploadQueue.map((file, index) => (
-                  <div
-                    key={`${file.name}-${index}`}
-                    className="flex items-center justify-between bg-white rounded p-2 text-sm"
-                  >
-                    <div className="flex items-center gap-2 overflow-hidden">
-                      <ImageIcon className="w-4 h-4 text-blue-500 shrink-0" />
-                      <span className="truncate text-gray-700">{file.name}</span>
-                      <span className="text-gray-400 shrink-0">
-                        ({formatSize(file.size)})
+            {/* Upload queue */}
+            {queue.length > 0 && (
+              <div className="rounded-xl border border-slate-200 bg-white p-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">
+                    Upload queue · {queue.length}
+                  </p>
+                  {uploading ? (
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-brand">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Uploading…
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setQueue([])}
+                      className="text-xs font-bold text-slate-400 hover:text-slate-600"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <ul className="max-h-32 space-y-1.5 overflow-y-auto pr-1">
+                  {queue.map((item) => (
+                    <li
+                      key={item.id}
+                      className="flex items-center gap-2 rounded-lg bg-alabaster px-2.5 py-2 text-xs"
+                    >
+                      <span className="shrink-0">
+                        {item.status === "uploading" ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-brand" />
+                        ) : item.status === "error" ? (
+                          <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+                        ) : (
+                          <ImageIcon className="h-3.5 w-3.5 text-slate-400" />
+                        )}
                       </span>
+                      <span className="min-w-0 flex-1 truncate font-semibold text-charcoal">
+                        {item.file.name}
+                      </span>
+                      <span className="shrink-0 text-slate-400">
+                        {formatSize(item.file.size)}
+                      </span>
+                      {item.status === "error" ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => void runUpload([item])}
+                            className="shrink-0 font-bold text-brand hover:underline"
+                          >
+                            Retry
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setQueue((prev) => prev.filter((q) => q.id !== item.id))
+                            }
+                            className="shrink-0 rounded p-0.5 text-slate-400 hover:text-slate-600"
+                            aria-label="Remove from queue"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </>
+                      ) : item.status === "pending" ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setQueue((prev) => prev.filter((q) => q.id !== item.id))
+                          }
+                          className="shrink-0 rounded p-0.5 text-slate-400 hover:text-slate-600"
+                          aria-label="Remove from queue"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Toolbar */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative min-w-[180px] flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search by name or folder…"
+                  className="h-9 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-9 text-sm text-charcoal outline-none transition-colors placeholder:text-slate-400 focus:border-brand/40 focus:ring-2 focus:ring-brand/10"
+                />
+                {query && (
+                  <button
+                    type="button"
+                    onClick={() => setQuery("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:text-slate-600"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {selectable && multiple && filtered.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelected(allSelected ? [] : filtered.map((img) => img.url))
+                  }
+                  className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-brand/40 hover:text-brand"
+                >
+                  {allSelected ? "Clear selection" : "Select all"}
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => void fetchImages()}
+                disabled={fetching}
+                className="flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition-colors hover:border-brand/40 hover:text-brand disabled:opacity-50"
+              >
+                <RefreshCw className={cn("h-3.5 w-3.5", fetching && "animate-spin")} />
+                Refresh
+              </button>
+            </div>
+
+            {/* Gallery */}
+            {fetching && images.length === 0 ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="animate-pulse overflow-hidden rounded-xl border border-slate-100"
+                  >
+                    <div className="aspect-square bg-slate-100" />
+                    <div className="space-y-1.5 px-2.5 py-2">
+                      <div className="h-2.5 w-3/4 rounded bg-slate-100" />
+                      <div className="h-2 w-1/2 rounded bg-slate-100" />
                     </div>
-                    {!uploading && (
-                      <button
-                        onClick={() => removeFromQueue(index)}
-                        className="text-red-500 hover:text-red-700 p-1"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl bg-alabaster px-6 py-12 text-center">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-300 shadow-sm">
+                  <ImageIcon className="h-6 w-6" />
+                </span>
+                <p className="mt-3 text-sm font-bold text-charcoal">
+                  {images.length === 0 ? "No images yet" : "Koi image match nahi hui"}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {images.length === 0
+                    ? "Upar drag & drop karein ya choose files par click karein"
+                    : "Search term badal kar dekhein"}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {filtered.map((img) => {
+                  const isSelected = selected.includes(img.url);
+                  const name = img.originalName || img.filename;
 
-          {/* Gallery */}
-          <div className="flex-1 overflow-hidden border rounded-lg">
-            <div className="h-[300px] overflow-y-auto p-3">
-              {loading ? (
-                <div className="h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-gray-400" />
-                    <p className="text-gray-500">Loading images...</p>
-                  </div>
-                </div>
-              ) : images.length === 0 ? (
-                <div className="h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <ImageIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                    <p className="text-gray-500">No images uploaded yet</p>
-                    <p className="text-sm text-gray-400 mt-1">
-                      Drag and drop images above to upload
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {images.map((img) => {
-                    const isSelected = selected.includes(img.url);
-
-                    return (
-                      <div
-                        key={img.filename}
-                        className={`relative border rounded-lg overflow-hidden group cursor-pointer transition-all
-                          ${isSelected ? 'ring-4 ring-primary ring-offset-2' : 'hover:shadow-md'}`}
-                        onClick={() => toggleSelect(img.url)}
+                  return (
+                    <div
+                      key={img.filename}
+                      className={cn(
+                        "group relative overflow-hidden rounded-xl border bg-white transition-all",
+                        isSelected
+                          ? "border-brand ring-2 ring-brand/25"
+                          : "border-slate-200 hover:border-slate-300 hover:shadow-md",
+                      )}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleImageClick(img)}
+                        className="block w-full text-left"
+                        aria-label={selectable ? `Select ${name}` : `Preview ${name}`}
                       >
-                        {/* Image */}
-                        <div className="aspect-square relative">
+                        <span className="relative block aspect-square overflow-hidden bg-slate-100">
+                          
                           <img
-                            src={img.url}
-                            alt={`Cloudinary image ${img.filename}`}
-                            className="w-full h-full object-cover"
+                            src={imageSrc(img.url)}
+                            alt={name}
                             loading="lazy"
+                            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                           />
-
-                          {/* Selected indicator */}
                           {isSelected && (
-                            <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                              <Check className="text-white w-8 h-8 bg-primary rounded-full p-1.5" />
-                            </div>
+                            <>
+                              <span className="absolute inset-0 bg-brand/25" />
+                              <span className="absolute left-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-brand text-white shadow-sm">
+                                <Check className="h-3.5 w-3.5" />
+                              </span>
+                            </>
                           )}
-
-                          {/* Delete button */}
-                          <Button
-                            size="icon"
-                            variant="secondary"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteConfirm({
-                                open: true,
-                                filename: img.filename,
-                                url: img.url,
-                              });
-                            }}
-                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 hover:bg-white"
+                        </span>
+                        <span className="block px-2.5 py-2">
+                          <span
+                            className="block truncate text-[11px] font-semibold text-charcoal"
+                            title={name}
                           >
-                            <Trash2 className="w-4 h-4 text-red-600" />
-                          </Button>
-                        </div>
+                            {name}
+                          </span>
+                          <span className="block text-[10px] text-slate-400">
+                            {img.format || "IMG"} · {formatSize(img.bytes ?? img.size)}
+                          </span>
+                        </span>
+                      </button>
 
-                        {/* Image info */}
-                        <div className="p-2 bg-white border-t">
-                          <p className="text-xs text-gray-500 truncate">
-                            {img.format?.toUpperCase()} • {(img.bytes ? img.bytes / 1024 : 0).toFixed(1)}KB
-                          </p>
-                          {img.width && img.height && (
-                            <p className="text-xs text-gray-400">
-                              {img.width}×{img.height}
-                            </p>
-                          )}
-                        </div>
+                      {/* Hover actions (siblings so there are no nested buttons) */}
+                      <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-end gap-1 p-1.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setPreview(img);
+                          }}
+                          title="Preview"
+                          aria-label={`Preview ${name}`}
+                          className="pointer-events-auto rounded-md bg-white/95 p-1.5 text-slate-700 shadow-sm transition-colors hover:bg-white"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setPendingDelete(img);
+                          }}
+                          title="Delete"
+                          aria-label={`Delete ${name}`}
+                          className="pointer-events-auto rounded-md bg-white/95 p-1.5 text-red-600 shadow-sm transition-colors hover:bg-white"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Footer */}
-          <DialogFooter className="flex justify-between items-center">
-            <div className="text-sm text-gray-600">
-              {selected.length} image(s) selected
-              {multiple && selected.length > 0 && ' • Click to confirm'}
-            </div>
-
-            <div className="flex gap-2">
+          <DialogFooter className="flex-row items-center justify-between gap-3 border-t border-slate-100 px-5 py-3.5 sm:justify-between sm:px-6">
+            <p className="text-xs text-slate-500">
+              {selectable
+                ? multiple
+                  ? `${selected.length} selected${selected.length > 0 ? " · confirm karein" : ""}`
+                  : "Image par click karke use karein"
+                : `${images.length} image${images.length === 1 ? "" : "s"} in library`}
+            </p>
+            <div className="flex items-center gap-2">
+              {selectable && multiple && selected.length > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="cursor-pointer"
+                  onClick={() => setSelected([])}
+                >
+                  Clear
+                </Button>
+              )}
               <Button
+                type="button"
                 variant="outline"
                 className="cursor-pointer"
-                onClick={() => {
-                  setSelected([]);
-                  setUploadQueue([]);
-                  onClose();
-                }}
+                onClick={handleClose}
               >
-                Cancel
+                {selectable ? "Cancel" : "Close"}
               </Button>
-
-              {multiple && (
+              {selectable && multiple && (
                 <Button
-                  className="cursor-pointer"
+                  type="button"
+                  className="cursor-pointer bg-brand text-white hover:bg-brand-dark"
                   onClick={confirmSelection}
-                  disabled={!selected.length || loading || uploading}
+                  disabled={selected.length === 0 || fetching}
                 >
                   Use Selected ({selected.length})
                 </Button>
@@ -418,42 +655,96 @@ export default function ImageUploadModal({
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteConfirm.open} onOpenChange={() => setDeleteConfirm({ open: false, filename: null, url: null })}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-red-600">Delete Image</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-sm text-gray-600 mb-3">
-              Are you sure you want to delete this image? This action cannot be undone.
-            </p>
-            {deleteConfirm.url && (
-              <div className="border rounded-lg p-2 mb-3">
-                <img
-                  src={deleteConfirm.url}
-                  alt="Preview"
-                  className="w-full h-32 object-cover rounded"
-                />
-              </div>
+      {/* Preview */}
+      <Dialog open={!!preview} onOpenChange={(value) => !value && setPreview(null)}>
+        <DialogContent className="max-w-3xl gap-0 overflow-hidden rounded-2xl border-slate-200 p-0">
+          <DialogTitle className="sr-only">Image preview</DialogTitle>
+          <DialogDescription className="sr-only">
+            Full size preview of the selected image
+          </DialogDescription>
+          <div className="flex max-h-[65vh] items-center justify-center bg-charcoal p-4">
+            {preview && (
+              
+              <img
+                src={imageSrc(preview.url)}
+                alt={preview.originalName || preview.filename}
+                className="max-h-[60vh] w-auto max-w-full object-contain"
+              />
             )}
           </div>
-          <DialogFooter className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteConfirm({ open: false, filename: null, url: null })}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => deleteConfirm.filename && handleDelete(deleteConfirm.filename)}
-            >
-              Delete
-            </Button>
-          </DialogFooter>
+          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-charcoal">
+                {preview?.originalName || preview?.filename}
+              </p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                {preview?.format || "IMG"} · {formatSize(preview?.bytes ?? preview?.size)}
+                {preview?.width && preview?.height
+                  ? ` · ${preview.width}×${preview.height}`
+                  : ""}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="cursor-pointer"
+                onClick={() => preview && void copyUrl(preview)}
+              >
+                <Copy className="h-4 w-4" />
+                Copy URL
+              </Button>
+              {selectable && (
+                <Button
+                  type="button"
+                  className="cursor-pointer bg-brand text-white hover:bg-brand-dark"
+                  onClick={() => preview && pickFromPreview(preview)}
+                >
+                  {multiple
+                    ? preview && selected.includes(preview.url)
+                      ? "Unselect"
+                      : "Select"
+                    : "Use this image"}
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                className="cursor-pointer"
+                onClick={() => setPreview(null)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation (shared component) */}
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(value) => !value && !deleting && setPendingDelete(null)}
+        title="Delete image?"
+        description="Ye image permanently delete ho jaayegi. Undo nahi hoga."
+        loading={deleting}
+        onConfirm={() => void confirmDelete()}
+      >
+        {pendingDelete && (
+          <>
+            <div className="overflow-hidden rounded-xl border border-slate-200">
+              
+              <img
+                src={imageSrc(pendingDelete.url)}
+                alt={pendingDelete.originalName || pendingDelete.filename}
+                className="max-h-48 w-full object-cover"
+              />
+            </div>
+            <p className="mt-2 truncate text-xs text-slate-500">
+              {pendingDelete.originalName || pendingDelete.filename}
+            </p>
+          </>
+        )}
+      </ConfirmDialog>
     </>
   );
 }

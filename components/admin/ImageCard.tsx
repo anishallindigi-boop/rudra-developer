@@ -1,25 +1,56 @@
+﻿"use client";
+
+import { Copy, Trash2 } from "lucide-react";
+
 export default function ImageCard({
   src,
   filename,
   meta,
+  onCopy,
   onDelete,
 }: {
   src: string;
   filename: string;
   meta: string;
+  onCopy: () => void;
   onDelete: () => void;
 }) {
   return (
-    <div style={{ background: "#fff", borderRadius: 14, padding: 10, boxShadow: "0 4px 14px rgba(0,0,0,.05)" }}>
-      <img src={src} alt={filename} style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 8 }} />
-      <div style={{ fontSize: 11, color: "#64748b", marginTop: 8, wordBreak: "break-all" }}>{filename}</div>
-      <div style={{ fontSize: 11, color: "#94a3b8" }}>{meta}</div>
-      <button
-        onClick={onDelete}
-        style={{ marginTop: 8, width: "100%", padding: "8px", borderRadius: 8, background: "#fee2e2", color: "#b91c1c", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13 }}
-      >
-        Delete
-      </button>
+    <div className="group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md">
+      <div className="relative aspect-square overflow-hidden bg-slate-100">
+        <img
+          src={src}
+          alt={filename}
+          loading="lazy"
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+        />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-end gap-1.5 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+          <button
+            type="button"
+            onClick={onCopy}
+            title="Copy URL"
+            aria-label={`Copy URL of ${filename}`}
+            className="pointer-events-auto rounded-md bg-white/95 p-1.5 text-slate-700 shadow-sm transition-colors hover:bg-white"
+          >
+            <Copy className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            title="Delete"
+            aria-label={`Delete ${filename}`}
+            className="pointer-events-auto rounded-md bg-white/95 p-1.5 text-red-600 shadow-sm transition-colors hover:bg-white"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+      <div className="px-3 py-2">
+        <p className="truncate text-xs font-semibold text-charcoal" title={filename}>
+          {filename}
+        </p>
+        <p className="text-[10px] text-slate-400">{meta}</p>
+      </div>
     </div>
   );
 }
