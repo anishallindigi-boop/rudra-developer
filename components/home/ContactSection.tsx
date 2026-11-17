@@ -10,8 +10,8 @@ export default function ContactSection() {
         <Reveal>
           <SectionHeading
             eyebrow="Contact & Office Details"
-            title="Aaeye, Baat Karein, Site Dekhein"
-            sub="Office par walk-in karein, call karein ya WhatsApp karein — hamari team turant reply karegi."
+            title="Visit Us, Let's Talk, Explore the Site"
+            sub="Walk into our office, give us a call, or connect with us on WhatsApp — our team will respond promptly."
           />
         </Reveal>
 

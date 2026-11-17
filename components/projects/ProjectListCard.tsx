@@ -1,7 +1,5 @@
 import Link from "next/link";
-import ImageSlot from "@/components/ImageSlot";
 import { MapPin, ArrowRight } from "@/components/icons";
-import { projectImage } from "@/lib/projectMedia";
 import type { Project } from "@/lib/api";
 
 /** Full-width project card used on the /projects listing page. */
@@ -12,24 +10,42 @@ export default function ProjectListCard({ project }: { project: Project }) {
     { label: "Plot Sizes", value: project.plotSizes },
   ].filter((stat) => stat.value);
 
+  // --- Image URL Logic ---
+  const baseUrl = process.env.NEXT_PUBLIC_IMAGE_URL || "http://localhost:5000";
+  let imageSrc = project.homebanner || project.image || "";
+
+  // Agar path /uploads/ se shuru hota hai toh baseUrl add karein
+  if (imageSrc.startsWith("/uploads/") || imageSrc.startsWith("uploads/")) {
+    const cleanPath = imageSrc.startsWith("/") ? imageSrc : `/${imageSrc}`;
+    imageSrc = `${baseUrl}${cleanPath}`;
+  }
+
   return (
     <article className="group grid overflow-hidden rounded-3xl bg-white shadow-md shadow-slate-200/60 transition-all duration-300 hover:shadow-2xl hover:shadow-slate-300/60 lg:grid-cols-2">
-      <div className="relative">
-        <ImageSlot
-          src={projectImage(project)}
-          alt={project.name || "Project"}
-          label={project.name || "Project"}
-          className="h-full min-h-72"
-          sizes="(max-width: 1024px) 100vw, 600px"
-          imgClassName="transition-transform duration-500 group-hover:scale-105"
-        />
+      
+      {/* Image Section */}
+      <div className="relative min-h-72 w-full overflow-hidden bg-slate-100">
+        {imageSrc ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageSrc}
+            alt={project.name || "Project"}
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-slate-400">
+            No Image Available
+          </div>
+        )}
+        
         {project.badge && (
-          <span className="absolute left-5 top-5 rounded-full bg-charcoal/80 px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider text-gold backdrop-blur">
+          <span className="absolute left-5 top-5 rounded-full bg-charcoal/80 px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider text-gold backdrop-blur z-10">
             {project.badge}
           </span>
         )}
       </div>
 
+      {/* Content Section */}
       <div className="flex flex-col justify-center p-8 md:p-10">
         <h2 className="text-2xl font-extrabold tracking-tight text-charcoal transition-colors group-hover:text-brand">
           {project.name}

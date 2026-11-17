@@ -6,6 +6,7 @@ import WhyUsSection from "@/components/home/WhyUsSection";
 import CtaSection from "@/components/CtaSection";
 import VideoSection from "@/components/home/VideoSection";
 import ContactSection from "@/components/home/ContactSection";
+import MapSection from "@/components/home/MapSection";
 
 export const instant = false;
 
@@ -33,8 +34,9 @@ export default async function HomePage() {
 
       <ProjectsSection projects={projects} />
       <WhyUsSection />
-      <CtaSection />
+      {/* <CtaSection /> */}
       <VideoSection />
+<MapSection/>
       <ContactSection />
     </>
   );

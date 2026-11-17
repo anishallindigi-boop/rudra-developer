@@ -54,10 +54,10 @@ export default async function ProjectsPage() {
         </div>
       </section>
 
-      <CtaSection
+      {/* <CtaSection
         title="Koi Sawaal Ho Ya Site Visit Book Karni Ho?"
         sub="Seedha call ya WhatsApp karein — hamari team aapko poora project walkthrough degi."
-      />
+      /> */}
     </>
   );
 }

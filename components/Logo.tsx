@@ -28,7 +28,7 @@ export default function Logo({ light = false }: { light?: boolean }) {
     <Link href="/" className="flex shrink-0 items-center gap-3" aria-label="Shree Rudra Developers — Home">
       {imgOk ? (
         <Image
-          src="/images/logo.png"
+          src="/logo.jpeg"
           alt="Shree Rudra Developers logo"
           width={96}
           height={96}
