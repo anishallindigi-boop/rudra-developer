@@ -29,6 +29,9 @@ import {
 } from "@/components/icons";
 import { SITE, waLink } from "@/lib/site";
 import { getProject } from "@/lib/api";
+import Reveal from "@/components/Reveal";
+import SectionHeading from "@/components/SectionHeading";
+import ZoomSlot from "@/components/ZoomSlot";
 
 export const metadata: Metadata = {
   title: "Shree Rudra Homes, Narwana — Premium Residential Plots",
@@ -149,6 +152,29 @@ export default async function NarwanaPage() {
 
       <ProjectConnectivity image={project?.connectivity} />
 
+
+      <section id="master-map" className="bg-white py-20 md:py-28">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <Reveal>
+            <SectionHeading
+              eyebrow="Site Plan & Master Map"
+              title="Approved Layout Plan — Bhagat Singh Colony Extension"
+              sub="Zoom in/out buttons se map ko detail mein dekhein, ya scroll karke explore karein."
+            />
+          </Reveal>
+          <Reveal delay={150} className="mt-12">
+            <ZoomSlot
+              src="/images/narwana-map1.png"
+              alt="Master map"
+              label="FINAL MAP – Bhagat Singh Colony Extension"
+            />
+            <p className="mt-5 text-center text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Caption: Approved Layout Plan — Bhagat Singh Colony Extension
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
       <ProjectInquiry
         eyebrow="Book Your Plot"
         title="Book Your Plot in Shree Rudra Homes Today"
@@ -184,6 +210,10 @@ export default async function NarwanaPage() {
             </p>
           </div>
         </div>
+
+
+
+
       </ProjectInquiry>
 
       <CtaSection
