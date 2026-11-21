@@ -17,7 +17,7 @@ export default function ProjectsSection({ projects }: { projects: Project[] }) {
         </Reveal>
 
         <div className="mt-14 grid gap-8 md:grid-cols-2">
-          {projects.slice(0, 2).map((project, i) => {
+          {projects.slice(0, 1).map((project, i) => {
             // Base URL set karein (Vercel/production par ye automatic handle ho jayega)
             const baseUrl = process.env.NEXT_PUBLIC_IMAGE_URL || "http://localhost:5000";
             

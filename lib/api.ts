@@ -125,54 +125,54 @@ export async function getProjects(): Promise<Project[]> {
       ],
       featured: true,
     },
-    {
-      slug: "bhagat-singh-colony-extension-kaithal",
-      name: "Bhagat Singh Colony Extension, Kaithal",
-      badge: "Prime Residential Plots",
-      location: "Bhagat Singh Colony Extension, Kaithal, Haryana",
-      description:
-        "Kaithal ke prime location par secure boundary wall, grand lighting gate aur modern street lights ke saath ready-to-build residential plots.",
-      overview:
-        "Bhagat Singh Colony Extension un parivaron ke liye design kiya gaya hai jo Kaithal mein ek peaceful, secure aur easily accessible residential area ki talash mein hain. Majboot boundary wall, well-lit entrance gate, proper demarcation aur wide internal roads ke saath yeh colony turant ghar banane aur high-growth investment dono ke liye upyukt hai.",
-      bannerheading:
-        "Bhagat Singh Colony Extension – Secure & Well-Connected Living in Kaithal",
-      aboutheading: "A Safe & Well-Planned Residential Address in Kaithal",
-      aboutsubheading:
-        "Boundary wall, grand lighting gate aur modern basic infrastructure ke saath residential plots.",
-      aboutpara1:
-        "Bhagat Singh Colony Extension aapko deta hai ek secure aur well-demarcated plotted environment, jahan aap bina kisi pareshani ke apne parivar ka ghar bana sakte hain.",
-      aboutpara2:
-        "Kaithal ke main markets, schools, hospitals aur HUDA Sector 19 ke nazdeek sthit hone ke karan yahan daily commute aur connectivity behad aasan hai.",
-      abountpointone: "Complete Secure Boundary Wall",
-      abountpointtwo: "Grand & Well-Lit Main Entrance Gate",
-      abountpointthree: "Proper Street Lighting & Wide Internal Roads",
-      abountpointfour: "Close to HUDA Sector 19 & Main Kaithal Markets",
-      brochuretitle: "View Master Map & Colony Layout Plan",
-      brochurepara:
-        "Colony ke approved layout map, plot numbers, road width aur surrounding connectivity ki details dekhne ke liye brochure aur map check karein.",
-      image: "/images/kaithal-card.jpg",
-      area: "Planned Residential Colony",
-      totalUnits: "Limited Residential Plots",
-      plotSizes: "Multiple Plot Sizes Available",
-      reraNo: "Approved Layout Plan",
-      policy: "Residential Plotted Colony",
-      amenities: [
-        "Complete Boundary Wall Around Colony",
-        "Grand Lighting Entrance Gate",
-        "Proper Street Lighting",
-        "Wide Internal Roads & Proper Demarcation",
-        "Prime & Peaceful Residential Neighborhood",
-        "Easy Access to Main Markets & HUDA Sector 19",
-      ],
-      chips: [
-        "Gated Colony",
-        "Boundary Wall",
-        "Street Lights",
-        "Prime Kaithal Location",
-        "Ready to Build",
-      ],
-      featured: true,
-    },
+    // {
+    //   slug: "bhagat-singh-colony-extension-kaithal",
+    //   name: "Bhagat Singh Colony Extension, Kaithal",
+    //   badge: "Prime Residential Plots",
+    //   location: "Bhagat Singh Colony Extension, Kaithal, Haryana",
+    //   description:
+    //     "Kaithal ke prime location par secure boundary wall, grand lighting gate aur modern street lights ke saath ready-to-build residential plots.",
+    //   overview:
+    //     "Bhagat Singh Colony Extension un parivaron ke liye design kiya gaya hai jo Kaithal mein ek peaceful, secure aur easily accessible residential area ki talash mein hain. Majboot boundary wall, well-lit entrance gate, proper demarcation aur wide internal roads ke saath yeh colony turant ghar banane aur high-growth investment dono ke liye upyukt hai.",
+    //   bannerheading:
+    //     "Bhagat Singh Colony Extension – Secure & Well-Connected Living in Kaithal",
+    //   aboutheading: "A Safe & Well-Planned Residential Address in Kaithal",
+    //   aboutsubheading:
+    //     "Boundary wall, grand lighting gate aur modern basic infrastructure ke saath residential plots.",
+    //   aboutpara1:
+    //     "Bhagat Singh Colony Extension aapko deta hai ek secure aur well-demarcated plotted environment, jahan aap bina kisi pareshani ke apne parivar ka ghar bana sakte hain.",
+    //   aboutpara2:
+    //     "Kaithal ke main markets, schools, hospitals aur HUDA Sector 19 ke nazdeek sthit hone ke karan yahan daily commute aur connectivity behad aasan hai.",
+    //   abountpointone: "Complete Secure Boundary Wall",
+    //   abountpointtwo: "Grand & Well-Lit Main Entrance Gate",
+    //   abountpointthree: "Proper Street Lighting & Wide Internal Roads",
+    //   abountpointfour: "Close to HUDA Sector 19 & Main Kaithal Markets",
+    //   brochuretitle: "View Master Map & Colony Layout Plan",
+    //   brochurepara:
+    //     "Colony ke approved layout map, plot numbers, road width aur surrounding connectivity ki details dekhne ke liye brochure aur map check karein.",
+    //   image: "/images/kaithal-card.jpg",
+    //   area: "Planned Residential Colony",
+    //   totalUnits: "Limited Residential Plots",
+    //   plotSizes: "Multiple Plot Sizes Available",
+    //   reraNo: "Approved Layout Plan",
+    //   policy: "Residential Plotted Colony",
+    //   amenities: [
+    //     "Complete Boundary Wall Around Colony",
+    //     "Grand Lighting Entrance Gate",
+    //     "Proper Street Lighting",
+    //     "Wide Internal Roads & Proper Demarcation",
+    //     "Prime & Peaceful Residential Neighborhood",
+    //     "Easy Access to Main Markets & HUDA Sector 19",
+    //   ],
+    //   chips: [
+    //     "Gated Colony",
+    //     "Boundary Wall",
+    //     "Street Lights",
+    //     "Prime Kaithal Location",
+    //     "Ready to Build",
+    //   ],
+    //   featured: true,
+    // },
   ];
 
   const list = await safeFetch<Project[]>("/projects?featured=true", fallback);

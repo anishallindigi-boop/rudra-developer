@@ -6,11 +6,11 @@ export const SITE = {
   whatsappNumber: "919996047701",
   address: "HUDA Sector 19, HUDA, Kaithal, Haryana 136027",
   instagram: "https://www.instagram.com/shree.rudradevelopers/",
-  facebook: "https://www.facebook.com/people/Shree-Rudra-Developers/",
+  facebook: "https://www.facebook.com/shreerudradevelopers/",
   mapsLink:
-    "https://www.google.com/maps?q=HUDA+Sector+19,+Kaithal,+Haryana+136027",
+    "https://www.google.com/maps/place/Shree+Rudra+Developers/@29.806263,76.419678,17z/data=!3m1!4b1!4m6!3m5!1s0x3911e100594d2a5f:0x145b02531957b23b!8m2!3d29.806263!4d76.419678!16s%2Fg%2F11w__mgtrh?entry=ttu&g_ep=EgoyMDI2MTExOC4xIKXMDSoASAFQAw%3D%3D",
   mapsEmbed:
-    "https://www.google.com/maps?q=HUDA%20Sector%2019%2C%20Kaithal%2C%20Haryana%20136027&output=embed",
+    "https://www.google.com/maps?q=Shree%20Rudra%20Developers%2C%20Haryana&output=embed",
 } as const;
 
 /** Build a WhatsApp chat link with a pre-filled message. */
